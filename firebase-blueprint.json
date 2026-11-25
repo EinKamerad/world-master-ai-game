@@ -1,0 +1,252 @@
+{
+  "entities": {
+    "OnlineRoom": {
+      "title": "OnlineRoom",
+      "description": "Multiplayer roleplay room with turn-based round action collection, modular non-D&D flags, and hidden AI plot plan.",
+      "type": "object",
+      "properties": {
+        "roomCode": {
+          "type": "string",
+          "description": "6-character uppercase alphanumeric invite code matching document ID."
+        },
+        "title": {
+          "type": "string",
+          "description": "Room campaign title."
+        },
+        "hostUid": {
+          "type": "string",
+          "description": "Firebase Auth UID of the room creator and AI round coordinator."
+        },
+        "hostName": {
+          "type": "string",
+          "description": "Display nickname of the host."
+        },
+        "memberUids": {
+          "type": "array",
+          "description": "Bounded list (max 8) of authenticated participant UIDs."
+        },
+        "worldName": {
+          "type": "string",
+          "description": "Name of the selected world setting."
+        },
+        "worldGenre": {
+          "type": "string",
+          "description": "Genre of the world setting."
+        },
+        "worldDescription": {
+          "type": "string",
+          "description": "Summary description of the world."
+        },
+        "diceSystem": {
+          "type": "string",
+          "description": "Dice/check system description."
+        },
+        "magicOrTechSystem": {
+          "type": "string",
+          "description": "Magic or technology rules summary."
+        },
+        "narrativeTone": {
+          "type": "string",
+          "description": "Narrative tone of the session."
+        },
+        "customRules": {
+          "type": "string",
+          "description": "Custom campaign or freeform rules."
+        },
+        "useDiceAndStats": {
+          "type": "boolean",
+          "description": "Whether dice rolls and numeric stats are enabled."
+        },
+        "useInventory": {
+          "type": "boolean",
+          "description": "Whether inventory tracking is enabled."
+        },
+        "useSpells": {
+          "type": "boolean",
+          "description": "Whether spells/abilities module is enabled."
+        },
+        "currentRound": {
+          "type": "integer",
+          "description": "Active round number (starts at 1)."
+        },
+        "roundPhase": {
+          "type": "string",
+          "enum": ["COLLECTING", "GM_RESPONDING"],
+          "description": "Current phase of the multiplayer round."
+        },
+        "hiddenPlotArc": {
+          "type": "string",
+          "description": "Hidden AI plot plan and upcoming story beats."
+        },
+        "hiddenNpcKnowledge": {
+          "type": "string",
+          "description": "Hidden NPC knowledge boundaries and secrets ledger."
+        },
+        "hiddenPlotTriggers": {
+          "type": "string",
+          "description": "Hidden triggers and consequences."
+        },
+        "memorySummary": {
+          "type": "string",
+          "description": "Compressed chronicle of earlier multiplayer rounds."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server creation timestamp via FieldValue.serverTimestamp()."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server update timestamp via FieldValue.serverTimestamp()."
+        }
+      },
+      "required": [
+        "roomCode",
+        "title",
+        "hostUid",
+        "hostName",
+        "memberUids",
+        "worldName",
+        "worldGenre",
+        "worldDescription",
+        "diceSystem",
+        "magicOrTechSystem",
+        "narrativeTone",
+        "customRules",
+        "useDiceAndStats",
+        "useInventory",
+        "useSpells",
+        "currentRound",
+        "roundPhase",
+        "hiddenPlotArc",
+        "hiddenNpcKnowledge",
+        "hiddenPlotTriggers",
+        "memorySummary",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "OnlineRoomPlayer": {
+      "title": "OnlineRoomPlayer",
+      "description": "Participant character sheet and current round action submission inside an OnlineRoom.",
+      "type": "object",
+      "properties": {
+        "userId": {
+          "type": "string",
+          "description": "Firebase Auth UID of this player matching document ID."
+        },
+        "roomCode": {
+          "type": "string",
+          "description": "Parent 6-character room invite code."
+        },
+        "heroName": {
+          "type": "string",
+          "description": "Character name."
+        },
+        "heroArchetype": {
+          "type": "string",
+          "description": "Character class, role, or concept."
+        },
+        "heroStats": {
+          "type": "string",
+          "description": "Character stats or narrative traits."
+        },
+        "pendingAction": {
+          "type": "string",
+          "description": "Submitted player action for submittedRound."
+        },
+        "pendingDiceRoll": {
+          "type": "string",
+          "description": "Optional attached dice roll summary for submittedRound."
+        },
+        "submittedRound": {
+          "type": "integer",
+          "description": "Round number for which pendingAction is marked ready (0 if none yet)."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server creation timestamp via FieldValue.serverTimestamp()."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server update timestamp via FieldValue.serverTimestamp()."
+        }
+      },
+      "required": [
+        "userId",
+        "roomCode",
+        "heroName",
+        "heroArchetype",
+        "heroStats",
+        "pendingAction",
+        "pendingDiceRoll",
+        "submittedRound",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "OnlineRoundEntry": {
+      "title": "OnlineRoundEntry",
+      "description": "Completed or opening narrative round log entry inside an OnlineRoom.",
+      "type": "object",
+      "properties": {
+        "roomCode": {
+          "type": "string",
+          "description": "Parent 6-character room invite code."
+        },
+        "roundNumber": {
+          "type": "integer",
+          "description": "Sequential round number (0 for prologue/opening hook, >= 1 for resolved rounds)."
+        },
+        "authorUid": {
+          "type": "string",
+          "description": "Host UID who published this round scene."
+        },
+        "partyActionsSummary": {
+          "type": "string",
+          "description": "Combined actions of all players in this round (empty for round 0 prologue)."
+        },
+        "gmNarrative": {
+          "type": "string",
+          "description": "Unified AI Game Master scene response."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server creation timestamp via FieldValue.serverTimestamp()."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server update timestamp via FieldValue.serverTimestamp()."
+        }
+      },
+      "required": [
+        "roomCode",
+        "roundNumber",
+        "authorUid",
+        "partyActionsSummary",
+        "gmNarrative",
+        "createdAt",
+        "updatedAt"
+      ]
+    }
+  },
+  "firestore": {
+    "/rooms/{roomCode}": {
+      "schema": "OnlineRoom",
+      "description": "Top-level multiplayer rooms indexed by 6-character invite code."
+    },
+    "/rooms/{roomCode}/players/{playerUid}": {
+      "schema": "OnlineRoomPlayer",
+      "description": "Per-player hero sheet and round submission within a room."
+    },
+    "/rooms/{roomCode}/rounds/{roundId}": {
+      "schema": "OnlineRoundEntry",
+      "description": "Sequential story log entries (round_0 prologue, round_1, round_2, ...) within a room."
+    }
+  }
+}

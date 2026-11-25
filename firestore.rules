@@ -1,0 +1,258 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Global default-deny safety net
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() >= 1 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function isValidRoomCode(code) {
+      return code is string && code.size() == 6 && code.matches('^[A-Z0-9]{6}$');
+    }
+
+    function isRoomMember(roomCode) {
+      return isSignedIn() &&
+             exists(/databases/$(database)/documents/rooms/$(roomCode)) &&
+             request.auth.uid in get(/databases/$(database)/documents/rooms/$(roomCode)).data.memberUids;
+    }
+
+    function isRoomHost(roomCode) {
+      return isSignedIn() &&
+             exists(/databases/$(database)/documents/rooms/$(roomCode)) &&
+             get(/databases/$(database)/documents/rooms/$(roomCode)).data.hostUid == request.auth.uid;
+    }
+
+    function isValidOnlineRoom(data) {
+      return data.roomCode is string && data.roomCode.size() == 6 && data.roomCode.matches('^[A-Z0-9]{6}$') &&
+             data.title is string && data.title.size() >= 1 && data.title.size() <= 120 &&
+             data.hostUid is string && data.hostUid.size() >= 1 && data.hostUid.size() <= 128 &&
+             data.hostName is string && data.hostName.size() >= 1 && data.hostName.size() <= 80 &&
+             data.memberUids is list && data.memberUids.size() >= 1 && data.memberUids.size() <= 8 &&
+             data.memberUids[0] is string && data.memberUids[0].size() <= 128 &&
+             data.worldName is string && data.worldName.size() >= 1 && data.worldName.size() <= 120 &&
+             data.worldGenre is string && data.worldGenre.size() >= 1 && data.worldGenre.size() <= 120 &&
+             data.worldDescription is string && data.worldDescription.size() <= 4000 &&
+             data.diceSystem is string && data.diceSystem.size() <= 300 &&
+             data.magicOrTechSystem is string && data.magicOrTechSystem.size() <= 500 &&
+             data.narrativeTone is string && data.narrativeTone.size() <= 300 &&
+             data.customRules is string && data.customRules.size() <= 2000 &&
+             data.useDiceAndStats is bool &&
+             data.useInventory is bool &&
+             data.useSpells is bool &&
+             data.currentRound is int && data.currentRound >= 1 && data.currentRound <= 100000 &&
+             data.roundPhase is string && (data.roundPhase == 'COLLECTING' || data.roundPhase == 'GM_RESPONDING') &&
+             data.hiddenPlotArc is string && data.hiddenPlotArc.size() <= 4000 &&
+             data.hiddenNpcKnowledge is string && data.hiddenNpcKnowledge.size() <= 4000 &&
+             data.hiddenPlotTriggers is string && data.hiddenPlotTriggers.size() <= 4000 &&
+             data.memorySummary is string && data.memorySummary.size() <= 6000 &&
+             data.createdAt is timestamp && data.createdAt <= request.time &&
+             data.updatedAt is timestamp && data.updatedAt <= request.time;
+    }
+
+    function isValidOnlineRoomPlayer(data) {
+      return data.userId is string && data.userId.size() >= 1 && data.userId.size() <= 128 &&
+             data.roomCode is string && data.roomCode.size() == 6 && data.roomCode.matches('^[A-Z0-9]{6}$') &&
+             data.heroName is string && data.heroName.size() >= 1 && data.heroName.size() <= 80 &&
+             data.heroArchetype is string && data.heroArchetype.size() <= 120 &&
+             data.heroStats is string && data.heroStats.size() <= 500 &&
+             data.pendingAction is string && data.pendingAction.size() <= 3000 &&
+             data.pendingDiceRoll is string && data.pendingDiceRoll.size() <= 200 &&
+             data.submittedRound is int && data.submittedRound >= 0 && data.submittedRound <= 100000 &&
+             data.createdAt is timestamp && data.createdAt <= request.time &&
+             data.updatedAt is timestamp && data.updatedAt <= request.time;
+    }
+
+    function isValidOnlineRoundEntry(data) {
+      return data.roomCode is string && data.roomCode.size() == 6 && data.roomCode.matches('^[A-Z0-9]{6}$') &&
+             data.roundNumber is int && data.roundNumber >= 0 && data.roundNumber <= 100000 &&
+             data.authorUid is string && data.authorUid.size() >= 1 && data.authorUid.size() <= 128 &&
+             data.partyActionsSummary is string && data.partyActionsSummary.size() <= 16000 &&
+             data.gmNarrative is string && data.gmNarrative.size() >= 1 && data.gmNarrative.size() <= 20000 &&
+             data.createdAt is timestamp && data.createdAt <= request.time &&
+             data.updatedAt is timestamp && data.updatedAt <= request.time;
+    }
+
+    // --- 1. Top-Level Multiplayer Rooms (/rooms/{roomCode}) ---
+    match /rooms/{roomCode} {
+      // Single-doc get by 6-char invite code so authenticated friends can inspect and join the room (contains zero PII)
+      allow get: if isSignedIn() && isValidRoomCode(roomCode);
+
+      // Scoped list query: strictly restricted to rooms where caller is already in memberUids
+      allow list: if isSignedIn() && request.auth.uid in resource.data.memberUids;
+
+      allow create: if isSignedIn() &&
+                       isValidRoomCode(roomCode) &&
+                       incoming().keys().hasAll([
+                         'roomCode', 'title', 'hostUid', 'hostName', 'memberUids',
+                         'worldName', 'worldGenre', 'worldDescription', 'diceSystem',
+                         'magicOrTechSystem', 'narrativeTone', 'customRules',
+                         'useDiceAndStats', 'useInventory', 'useSpells',
+                         'currentRound', 'roundPhase', 'hiddenPlotArc',
+                         'hiddenNpcKnowledge', 'hiddenPlotTriggers', 'memorySummary',
+                         'createdAt', 'updatedAt'
+                       ]) &&
+                       incoming().keys().hasOnly([
+                         'roomCode', 'title', 'hostUid', 'hostName', 'memberUids',
+                         'worldName', 'worldGenre', 'worldDescription', 'diceSystem',
+                         'magicOrTechSystem', 'narrativeTone', 'customRules',
+                         'useDiceAndStats', 'useInventory', 'useSpells',
+                         'currentRound', 'roundPhase', 'hiddenPlotArc',
+                         'hiddenNpcKnowledge', 'hiddenPlotTriggers', 'memorySummary',
+                         'createdAt', 'updatedAt'
+                       ]) &&
+                       isValidOnlineRoom(incoming()) &&
+                       incoming().roomCode == roomCode &&
+                       incoming().hostUid == request.auth.uid &&
+                       incoming().memberUids.size() == 1 &&
+                       request.auth.uid in incoming().memberUids &&
+                       incoming().currentRound == 1 &&
+                       incoming().roundPhase == 'COLLECTING';
+
+      allow update: if isSignedIn() &&
+                       isValidRoomCode(roomCode) &&
+                       isValidOnlineRoom(incoming()) &&
+                       incoming().roomCode == existing().roomCode &&
+                       incoming().hostUid == existing().hostUid &&
+                       incoming().createdAt == existing().createdAt && (
+                         // Action 1: Friend joins room by invite code (appends only their own UID)
+                         (
+                           !(request.auth.uid in existing().memberUids) &&
+                           existing().memberUids.size() < 8 &&
+                           request.auth.uid in incoming().memberUids &&
+                           incoming().memberUids.hasAll(existing().memberUids) &&
+                           incoming().memberUids.size() == existing().memberUids.size() + 1 &&
+                           incoming().diff(existing()).affectedKeys().hasOnly(['memberUids', 'updatedAt'])
+                         ) ||
+                         // Action 2: Host advances round, updates phase, modules, or hidden plot plan
+                         (
+                           request.auth.uid == existing().hostUid &&
+                           incoming().memberUids == existing().memberUids &&
+                           incoming().currentRound >= existing().currentRound &&
+                           incoming().diff(existing()).affectedKeys().hasOnly([
+                             'title', 'roundPhase', 'currentRound',
+                             'hiddenPlotArc', 'hiddenNpcKnowledge', 'hiddenPlotTriggers',
+                             'memorySummary', 'useDiceAndStats', 'useInventory',
+                             'useSpells', 'customRules', 'updatedAt'
+                           ])
+                         )
+                       );
+
+      allow delete: if isSignedIn() &&
+                       isValidRoomCode(roomCode) &&
+                       existing().hostUid == request.auth.uid;
+
+      // --- 2. Room Participants & Round Action Submissions (/rooms/{roomCode}/players/{playerUid}) ---
+      match /players/{playerUid} {
+        allow get: if isSignedIn() &&
+                      isValidRoomCode(roomCode) &&
+                      isValidId(playerUid) &&
+                      isRoomMember(roomCode);
+
+        // List disabled: clients observe known memberUids from the parent room directly
+        allow list: if false;
+
+        allow create: if isSignedIn() &&
+                         isValidRoomCode(roomCode) &&
+                         isValidId(playerUid) &&
+                         request.auth.uid == playerUid &&
+                         incoming().keys().hasAll([
+                           'userId', 'roomCode', 'heroName', 'heroArchetype', 'heroStats',
+                           'pendingAction', 'pendingDiceRoll', 'submittedRound',
+                           'createdAt', 'updatedAt'
+                         ]) &&
+                         incoming().keys().hasOnly([
+                           'userId', 'roomCode', 'heroName', 'heroArchetype', 'heroStats',
+                           'pendingAction', 'pendingDiceRoll', 'submittedRound',
+                           'createdAt', 'updatedAt'
+                         ]) &&
+                         isValidOnlineRoomPlayer(incoming()) &&
+                         incoming().userId == request.auth.uid &&
+                         incoming().roomCode == roomCode &&
+                         isRoomMember(roomCode);
+
+        allow update: if isSignedIn() &&
+                         isValidRoomCode(roomCode) &&
+                         isValidId(playerUid) &&
+                         isValidOnlineRoomPlayer(incoming()) &&
+                         request.auth.uid == playerUid &&
+                         incoming().userId == existing().userId &&
+                         incoming().roomCode == existing().roomCode &&
+                         incoming().createdAt == existing().createdAt &&
+                         incoming().diff(existing()).affectedKeys().hasOnly([
+                           'heroName', 'heroArchetype', 'heroStats',
+                           'pendingAction', 'pendingDiceRoll', 'submittedRound', 'updatedAt'
+                         ]) &&
+                         isRoomMember(roomCode);
+
+        allow delete: if isSignedIn() &&
+                         isValidRoomCode(roomCode) &&
+                         isValidId(playerUid) &&
+                         (request.auth.uid == playerUid || isRoomHost(roomCode));
+      }
+
+      // --- 3. Sequential Round Story Entries (/rooms/{roomCode}/rounds/{roundId}) ---
+      match /rounds/{roundId} {
+        allow get: if isSignedIn() &&
+                      isValidRoomCode(roomCode) &&
+                      isValidId(roundId) &&
+                      isRoomMember(roomCode);
+
+        // List disabled: clients fetch/observe deterministic round_0..round_{currentRound} IDs
+        allow list: if false;
+
+        allow create: if isSignedIn() &&
+                         isValidRoomCode(roomCode) &&
+                         isValidId(roundId) &&
+                         roundId.matches('^round_[0-9]{1,6}$') &&
+                         incoming().keys().hasAll([
+                           'roomCode', 'roundNumber', 'authorUid',
+                           'partyActionsSummary', 'gmNarrative', 'createdAt', 'updatedAt'
+                         ]) &&
+                         incoming().keys().hasOnly([
+                           'roomCode', 'roundNumber', 'authorUid',
+                           'partyActionsSummary', 'gmNarrative', 'createdAt', 'updatedAt'
+                         ]) &&
+                         isValidOnlineRoundEntry(incoming()) &&
+                         incoming().roomCode == roomCode &&
+                         incoming().authorUid == request.auth.uid &&
+                         isRoomHost(roomCode);
+
+        allow update: if isSignedIn() &&
+                         isValidRoomCode(roomCode) &&
+                         isValidId(roundId) &&
+                         isValidOnlineRoundEntry(incoming()) &&
+                         incoming().roomCode == existing().roomCode &&
+                         incoming().roundNumber == existing().roundNumber &&
+                         incoming().authorUid == existing().authorUid &&
+                         incoming().createdAt == existing().createdAt &&
+                         incoming().diff(existing()).affectedKeys().hasOnly([
+                           'partyActionsSummary', 'gmNarrative', 'updatedAt'
+                         ]) &&
+                         isRoomHost(roomCode);
+
+        allow delete: if isSignedIn() &&
+                         isValidRoomCode(roomCode) &&
+                         isValidId(roundId) &&
+                         isRoomHost(roomCode);
+      }
+    }
+  }
+}

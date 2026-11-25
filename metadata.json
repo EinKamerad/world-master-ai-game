@@ -1,0 +1,6 @@
+{
+  "name": "Мастер Миров",
+  "description": "ИИ-мастер настольных ролевых игр с инвентарем, журналом с тегами, кастомными заклинаниями, гибкой настройкой сеттингов и локальной базой данных.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

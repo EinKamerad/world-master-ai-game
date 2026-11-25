@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<network-security-config>
+    <!-- Permits local/LAN HTTP gateways (such as Antigravity Proxy, Ollama, or LM Studio on PC/LAN)
+         while Kotlin AiEndpointValidator strictly enforces HTTPS for all public cloud endpoints. -->
+    <base-config cleartextTrafficPermitted="true">
+        <trust-anchors>
+            <certificates src="system" />
+        </trust-anchors>
+    </base-config>
+</network-security-config>

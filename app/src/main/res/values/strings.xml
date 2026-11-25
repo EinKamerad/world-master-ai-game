@@ -1,0 +1,18 @@
+<resources>
+    <string name="app_name">Мастер Миров</string>
+    <string name="nav_master">Мастер</string>
+    <string name="nav_inventory">Снаряжение</string>
+    <string name="nav_journal">Журнал</string>
+    <string name="nav_spells">Заклинания</string>
+    <string name="nav_world">Мир и Настройки</string>
+    <string name="chat_input_hint">Опишите ваше действие, диалог или заявку...</string>
+    <string name="send_action">Отправить</string>
+    <string name="memory_full_title">Внимание: память ИИ заполнена полностью!</string>
+    <string name="memory_warn_title">Память сессии почти заполнена</string>
+    <string name="optimize_memory_btn">Оптимизировать память</string>
+    <string name="local_privacy_badge">100% локальная БД • Приватно на устройстве</string>
+    <string name="hero_banner_desc">Портал миров и настольных приключений</string>
+    <string name="grimoire_banner_desc">Гримуар пользовательских заклинаний и способностей</string>
+    <string name="ai_hub_title">Подключения ИИ и Лимиты</string>
+    <string name="ai_hub_subtitle">Переключайтесь между встроенным Gemini, Антигравити API, аккаунтом Google OAuth, своими ключами с авторотацией, OpenRouter и локальными серверами</string>
+</resources>
